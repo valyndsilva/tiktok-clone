@@ -82,6 +82,7 @@ export const config = {
    * Authenticated request (like preview) will always bypass the CDN
    **/
   useCdn: process.env.NODE_ENV === 'production',
+  token: process.env.NEXT_PUBLIC_SANITY_TOKEN,
 };
 
 ```
@@ -106,7 +107,7 @@ Create a file called .env.local in the root of your project.
 ```
 NEXT_PUBLIC_SANITY_DATASET=value
 NEXT_PUBLIC_SANITY_PROJECT_ID=value
-SANITY_API_TOKEN=value
+NEXT_PUBLIC_SANITY_TOKEN=value
 ```
 
 Open sanity.io/manage:
@@ -118,8 +119,14 @@ Settings => API settings => Tokens => Create Tokens
 Name: twitter-clone
 Permissions Option: Editor
 Create Token.
-Copy the token value and paste into SANITY_API_TOKEN in env.local
+Copy the token value and paste into NEXT_PUBLIC_SANITY_TOKEN in env.local
+Next go to Settings => API settings => CORS Origins => Add CORS origin
+Origin: http://localhost:3000
+Check Allow Credentials
+Save
 ```
+
+If you don't set the CORS origin you won't be able to access the data from your app.
 
 After updating the .env.local restart in root directory:
 
@@ -279,17 +286,298 @@ export default createSchema({
 
 Add a new user and post in the sanity studio interface.
 
+### Prepare GROQ queries:
+
+Install a package in the root directory folder:
+
+```
+npm install --dev next-sanity
+npm install --save groq
+```
+
+Next. create a folder called "utils" in the root directory and in it a file called "queries.ts":
+
+In utils/queries.ts:
+
+```
+import { groq } from "next-sanity";
+export const allPostsQuery = () => {
+  const query = groq`*[_type == "post"] | order(_createdAt desc){
+      _id,
+       caption,
+         video{
+          asset->{
+            _id,
+            url
+          }
+        },
+        userId,
+        postedBy->{
+          _id,
+          userName,
+          image
+        },
+      likes,
+      comments[]{
+        comment,
+        _key,
+        postedBy->{
+        _id,
+        userName,
+        image
+      },
+      }
+    }`;
+
+  return query;
+};
+
+export const postDetailQuery = (postId: string | string[]) => {
+  const query = groq`*[_type == "post" && _id == '${postId}']{
+      _id,
+       caption,
+         video{
+          asset->{
+            _id,
+            url
+          }
+        },
+        userId,
+      postedBy->{
+        _id,
+        userName,
+        image
+      },
+       likes,
+      comments[]{
+        comment,
+        _key,
+        postedBy->{
+          _ref,
+        _id,
+      },
+      }
+    }`;
+  return query;
+};
+
+export const searchPostsQuery = (searchTerm: string | string[]) => {
+  const query = groq`*[_type == "post" && caption match '${searchTerm}*' || topic match '${searchTerm}*'] {
+      _id,
+       caption,
+         video{
+          asset->{
+            _id,
+            url
+          }
+        },
+        userId,
+      postedBy->{
+        _id,
+        userName,
+        image
+      },
+  likes,
+      comments[]{
+        comment,
+        _key,
+        postedBy->{
+        _id,
+        userName,
+        image
+      },
+      }
+    }`;
+  return query;
+};
+
+export const singleUserQuery = (userId: string | string[]) => {
+  const query = groq`*[_type == "user" && _id == '${userId}']`;
+
+  return query;
+};
+
+export const allUsersQuery = () => {
+  const query = groq`*[_type == "user"]`;
+
+  return query;
+};
+
+export const userCreatedPostsQuery = (userId: string | string[]) => {
+  const query = groq`*[ _type == 'post' && userId == '${userId}'] | order(_createdAt desc){
+      _id,
+       caption,
+         video{
+          asset->{
+            _id,
+            url
+          }
+        },
+        userId,
+      postedBy->{
+        _id,
+        userName,
+        image
+      },
+   likes,
+
+      comments[]{
+        comment,
+        _key,
+        postedBy->{
+        _id,
+        userName,
+        image
+      },
+      }
+    }`;
+
+  return query;
+};
+
+export const userLikedPostsQuery = (userId: string | string[]) => {
+  const query = groq`*[_type == 'post' && '${userId}' in likes[]._ref ] | order(_createdAt desc) {
+      _id,
+       caption,
+         video{
+          asset->{
+            _id,
+            url
+          }
+        },
+        userId,
+      postedBy->{
+        _id,
+        userName,
+        image
+      },
+   likes,
+
+      comments[]{
+        comment,
+        _key,
+        postedBy->{
+        _id,
+        userName,
+        image
+      },
+      }
+    }`;
+
+  return query;
+};
+
+export const topicPostsQuery = (topic: string | string[]) => {
+  const query = groq`*[_type == "post" && topic match '${topic}*'] {
+      _id,
+       caption,
+         video{
+          asset->{
+            _id,
+            url
+          }
+        },
+        userId,
+      postedBy->{
+        _id,
+        userName,
+        image
+      },
+   likes,
+
+      comments[]{
+        comment,
+        _key,
+        postedBy->{
+        _id,
+        userName,
+        image
+      },
+      }
+    }`;
+
+  return query;
+};
+
+```
+
 ## Implementing Server-Side Rendering:
 
 React loads the entire bundle on the users browser which takes long. Therefore SSR is recommended.
 In SSR all the JS is handled on the server and the user gets the output of the response.
 NextJS gives us API endpoints out of the box.
-We will create an endpoint for fetching tweets and then fetch from our own server.
+We will create an endpoint for fetching posts and then fetch from our own server.
 Instead of contacting sanity directly from our browser we will create npm endpoints and connect to these endpoints which then on our server makes communication to sanity. This is also a safer alternative.
+
+### Create a new API endpoint in pages/api/post/index.ts:
+
+In pages/api/post/index.ts:
+
+```
+// Next.js API route support: https://nextjs.org/docs/api-routes/introduction
+import type { NextApiRequest, NextApiResponse } from "next";
+import { sanityClient } from "../../../lib/sanity";
+import { allPostsQuery } from "../../../utils/queries";
+
+type Data = {
+  name: string;
+};
+
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse<Data>
+) {
+  //   res.status(200).json({ name: "Response Success" });
+  if (req.method === "GET") {
+    const query = allPostsQuery();
+    const data = await sanityClient.fetch(query);
+    res.status(200).json(data);
+  }
+}
+```
+
+### Implement getServerSideProps:
 
 Open pages/index.tsx and add the special function called getServerSideProps
 
-Create a custom type by creating a typings.d.ts in the root directory:
+```
+import type { NextPage } from "next";
+import axios from "axios";
+
+// interface IProps{
+// videos:
+// }
+
+const Home: NextPage = ({ videos }) => {
+  console.log(videos);
+  return (
+    <div>
+      <h1 className="text-3xl font-bold underline"></h1>
+    </div>
+  );
+};
+
+export default Home;
+
+export const getServerSideProps = async () => {
+  // const res = await axios.get(`http://localhost:3000/api/post`);
+  // console.log(res.data.name);
+
+  // fetch new videos each time we load the page
+  const { data } = await axios.get(`http://localhost:3000/api/post`);
+  console.log(data);
+  return {
+    props: {
+      videos: data,
+    },
+  };
+};
+
+```
+
+### Create a custom type by creating a typings.d.ts in the root directory:
+
+Refer to pages/index.tsx videos props structure in the browser console and create a typings.d.ts in the root directory accordingly.
 
 ```
 export interface Video {
@@ -332,15 +620,131 @@ export interface IUser {
 
 ```
 
-Create a new folder called utils in root directory and a file called fetchPosts.tsx
-
-Install a package in the root directory folder:
+Now update pages/index.tsx with the custom typings.d.ts and create the interface:
 
 ```
-npm install --dev next-sanity
+import { NextPage } from "next";
+import axios from "axios";
+import { Video } from "../typings";
+
+interface IProps {
+  videos: Video[];
+}
+
+const Home: NextPage<IProps> = ({ videos }) => {
+  console.log(videos);
+  return (
+    <div>
+      <h1 className="text-3xl font-bold underline"></h1>
+    </div>
+  );
+};
+
+export default Home;
+
+export const getServerSideProps = async () => {
+  // const res = await axios.get(`http://localhost:3000/api/post`);
+  // console.log(res.data.name);
+
+  // fetch new videos each time we load the page
+  const { data } = await axios.get(`http://localhost:3000/api/post`);
+  console.log(data);
+  return {
+    props: {
+      videos: data,
+    },
+  };
+};
+
 ```
 
-Next create a new API endpoint in pages/api folder and called getPosts.ts
+Create 2 new components VideoCard.tsx and NoResults.tsx:
+In VideoCard.tsx:
+
+```
+import { NextPage } from "next";
+import React from "react";
+import { Video } from "../typings";
+
+interface IProps {
+  post: Video;
+}
+
+const VideoCard: NextPage<IProps> = ({ post }) => {
+  console.log(post.caption);
+  return <div>VideoCard</div>;
+};
+
+export default VideoCard;
+
+```
+
+In NoResults.tsx:
+
+```
+import { NextPage } from "next";
+import React from "react";
+
+interface IProps {
+  text: string;
+}
+
+const NoResults: NextPage<IProps> = ({ text }) => {
+  return <div>NoResults</div>;
+};
+
+export default NoResults;
+
+```
+
+Next update pages/index.tsx with VideoCard and NoResults components:
+
+```
+import axios from "axios";
+import { NextPage } from "next";
+import { NoResults, VideoCard } from "../components";
+import { Video } from "../typings";
+interface IProps {
+  videos: Video[];
+}
+
+const Home: NextPage<IProps> = ({ videos }) => {
+  console.log(videos);
+  return (
+    <div className="flex flex-col gap-10 h-full videos">
+      {videos.length ? (
+        videos.map((video: Video) => <VideoCard post={video} key={video._id} />)
+      ) : (
+        <NoResults text={"No Videos"} />
+      )}
+    </div>
+  );
+};
+
+export default Home;
+
+export const getServerSideProps = async () => {
+  // const res = await axios.get(`http://localhost:3000/api/post`);
+  // console.log(res.data.name);
+
+  // fetch new videos each time we load the page
+  const { data } = await axios.get(`http://localhost:3000/api/post`);
+  console.log(data);
+  return {
+    props: {
+      videos: data,
+    },
+  };
+};
+
+
+```
+
+Now let's update the components/VideoCard.tsx:
+
+```
+
+```
 
 # Setup Project Structure:
 
