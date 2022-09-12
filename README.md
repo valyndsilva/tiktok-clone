@@ -23,7 +23,7 @@ cd tiktok-clone
 ### Install Project Dependencies:
 
 ```
-npm install axios react-google-login react-icons uuidv4 zustand
+npm install axios @react-oauth/google react-icons uuidv4 zustand
 npm install --legacy-peer-deps
 ```
 
@@ -543,6 +543,7 @@ Open pages/index.tsx and add the special function called getServerSideProps
 ```
 import type { NextPage } from "next";
 import axios from "axios";
+import { BASE_URL } from "../utils";
 
 // interface IProps{
 // videos:
@@ -564,7 +565,7 @@ export const getServerSideProps = async () => {
   // console.log(res.data.name);
 
   // fetch new videos each time we load the page
-  const { data } = await axios.get(`http://localhost:3000/api/post`);
+  const { data } = await axios.get(`${BASE_URL}/api/post`);
   console.log(data);
   return {
     props: {
@@ -625,6 +626,7 @@ Now update pages/index.tsx with the custom typings.d.ts and create the interface
 ```
 import { NextPage } from "next";
 import axios from "axios";
+import { BASE_URL } from "../utils";
 import { Video } from "../typings";
 
 interface IProps {
@@ -647,7 +649,7 @@ export const getServerSideProps = async () => {
   // console.log(res.data.name);
 
   // fetch new videos each time we load the page
-  const { data } = await axios.get(`http://localhost:3000/api/post`);
+  const { data } = await axios.get(`${BASE_URL}/api/post`);
   console.log(data);
   return {
     props: {
@@ -740,9 +742,1152 @@ export const getServerSideProps = async () => {
 
 ```
 
-Now let's update the components/VideoCard.tsx:
+Now let's update the look and feel of components/VideoCard.tsx:
 
 ```
+import { NextPage } from "next";
+import React, { useRef, useState } from "react";
+import { Video } from "../typings";
+import { HiVolumeUp, HiVolumeOff } from "react-icons/hi";
+import { BsPlay, BsFillPlayFill, BsFillPauseFill } from "react-icons/bs";
+import { GoVerified } from "react-icons/go";
+import Image from "next/image";
+import Link from "next/link";
+
+interface IProps {
+  post: Video;
+}
+
+const VideoCard: NextPage<IProps> = ({ post }) => {
+  // console.log(post.caption);
+  const [isHover, setIsHover] = useState(false);
+  const [playing, setPlaying] = useState(false);
+  const [isVideoMuted, setIsVideoMuted] = useState(false);
+
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  const handleVideoClick = () => {
+    if (playing) {
+      videoRef?.current?.pause();
+      setPlaying(false);
+    } else {
+      videoRef?.current?.play();
+      setPlaying(true);
+    }
+  };
+
+  return (
+    <div className="flex flex-col border-b-[1px] border-gray-200 pb-6">
+      <div>
+        <div className="flex gap-3 p-2 cursor-pointer font-semibold rounded">
+          <div className="md:w-16 md:h-16 w-10 h-10">
+            {/* We cannot add an Image as a child component of a Link directly so add between <> </> */}
+            <Link href="/">
+              <>
+                <Image
+                  width={62}
+                  height={62}
+                  className="rounded-full"
+                  src={post.postedBy.image}
+                  alt="profile photo"
+                  layout="responsive"
+                  objectFit="cover"
+                />
+              </>
+            </Link>
+          </div>
+          <div>
+            <Link href="/">
+              <div className="flex items-center gap-2">
+                <p className="flex gap-2 items-center md:text-md font-bold text-primary">
+                  {post.postedBy.userName}{" "}
+                  <GoVerified className="text-blue-400 text-md" />
+                </p>
+                <p className="capitalize text-xs text-gray-500 hidden md:block">
+                  {post.postedBy.userName}
+                </p>
+              </div>
+            </Link>
+          </div>
+        </div>
+      </div>
+      <div className="lg:ml-20 flex gap-4 relative">
+        <div
+          className="rounded-3xl"
+          onMouseEnter={() => setIsHover(true)}
+          onMouseLeave={() => setIsHover(false)}
+        >
+          <Link href="/">
+            <video
+              src={post.video.asset.url}
+              ref={videoRef}
+              loop
+              className="lg:w-[600px] h-[300px] md:h-[400px] lg:h-[530px] w-[200px] rounded-2xl cursor-pointer bg-gray-100"
+            />
+          </Link>
+          {isHover && (
+            <div className="flex absolute bottom-6 cursor-pointer left-0 justify-between px-5 lg:w-[600px] w-[200px] items-center">
+              {playing ? (
+                <button onClick={handleVideoClick}>
+                  <BsFillPauseFill className="h-8 w-8" />
+                </button>
+              ) : (
+                <button onClick={handleVideoClick}>
+                  <BsFillPlayFill className="h-8 w-8" />
+                </button>
+              )}
+              {isVideoMuted ? (
+                <button onClick={() => setIsVideoMuted(false)}>
+                  <HiVolumeOff className="h-7 w-7" />
+                </button>
+              ) : (
+                <button onClick={() => setIsVideoMuted(true)}>
+                  <HiVolumeUp className="h-7 w-7" />
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default VideoCard;
+
+```
+
+## Implement the Upload Videos Page:
+
+### Google Identity Services:
+
+To upload a video we need to be authenticated users.
+Refer https://developers.google.com/identity/sign-in/web
+Use npm package: https://www.npmjs.com/package/@react-oauth/google
+
+Google Identity Services only allows you to login but doesn't allow you to get profile image or username. So we can decode the JSON Web Token that we get back with the login using jwt-decode.
+
+```
+ npm install @react-oauth/google@latest jwt-decode
+```
+
+To get the clientId we need to https://console.cloud.google.com
+Create New Project
+name: tiktok-clone
+organization: No organization
+Create
+Select Project
+
+Open the Sidebar -> More Products -> APIs & Services -> Credentials
+Click on Configure Consent Screen -> External -> Create
+Under App information
+App name: tiktok-clone
+User support email: your email address
+Under Developer contact information
+Email address: your email address
+Save and Continue
+Scope: no changes
+Save and Continue
+Test Users: no changes
+Back To Dashboard
+
+Open the Sidebar -> More Products -> APIs & Services -> Credentials
+Create Credentials -> OAuth Client ID
+Application type: Web application
+Name: tiktok-clone
+Under Authorized JavaScript origins:
+Add URI:
+http://localhost
+http://localhost:3000
+Under Authorized redirect URIs:
+Add URI:
+http://localhost
+Save
+
+This creates the OAuth client ID. Copy the clientID and add it to the .env.local file:
+
+```
+NEXT_PUBLIC_GOOGLE_API_TOKEN=your clientID
+```
+
+Now, go to pages/\_app.tsx and wrap the whole component between <GoogleOAuthProvider clientId=""></GoogleOAuthProvider>:
+
+```
+import "../styles/globals.css";
+import type { AppProps } from "next/app";
+import { Layout } from "../components";
+import { useEffect, useState } from "react";
+import { GoogleOAuthProvider } from "@react-oauth/google";
+
+function MyApp({ Component, pageProps }: AppProps) {
+  // To fix hydration UI mismatch issues, we need to wait until the component has mounted.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+  if (!mounted) return null;
+
+  return (
+    <GoogleOAuthProvider
+      clientId={`${process.env.NEXT_PUBLIC_GOOGLE_API_TOKEN}`}
+    >
+      <Layout>
+        <Component {...pageProps} />
+      </Layout>
+    </GoogleOAuthProvider>
+  );
+}
+
+export default MyApp;
+
+```
+
+## Create a Global state
+
+We need to create a global state that will be persistent.
+In .env.local create
+
+```
+NEXT_PUBLIC_BASE_URL=http://localhost:3000
+```
+
+In utils folder create index.ts:
+
+```
+import axios from "axios";
+import jwt_decode from "jwt-decode";
+
+export const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
+
+export const createOrGetUser = async (response: any) => {
+  console.log(response.credential); // returns a json web token
+  const decoded: { name: string; picture: string; sub: string } = jwt_decode(
+    response.credential
+  ); // sub is a unique identifier for every user
+  console.log(decoded); // returns a json object
+  const { name, picture, sub } = decoded;
+
+  const user = {
+    _id: sub,
+    _type: "user",
+    userName: name,
+    image: picture,
+  };
+
+  // addUser(user);
+
+  await axios.post(`${BASE_URL}/api/auth`, user);
+
+};
+
+```
+
+Create a new api endpoint pages/api/auth.ts:
+
+```
+// Next.js API route support: https://nextjs.org/docs/api-routes/introduction
+import type { NextApiRequest, NextApiResponse } from "next";
+import { sanityClient } from "../../lib/sanity";
+
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
+  //   res.status(200).json({ name: "Response Success" });
+  if (req.method === "POST") {
+    const user = req.body;
+
+    // Creates a new user inside sanity db
+    sanityClient
+      .createIfNotExists(user)
+      .then(() => res.status(200).json("Login Success"));
+  }
+}
+
+```
+
+Go to components/Header.tsx and import the GooglLogin and googleLogout:
+
+```
+import Image from "next/image";
+import Link from "next/link";
+import { useRouter } from "next/router";
+import React, { useEffect, useState } from "react";
+import { SiTiktok } from "react-icons/si";
+import { AiOutlineLogout } from "react-icons/ai";
+import { BiSearch } from "react-icons/bi";
+import { IoMdAdd } from "react-icons/io";
+import { GoogleLogin, googleLogout } from "@react-oauth/google";
+import { createOrGetUser } from "../utils";
+import { IUser } from "../typings";
+// import useAuthStore from '../store/authStore';
+
+function Header() {
+  const [user, setUser] = useState<IUser | null>();
+  const [searchValue, setSearchValue] = useState("");
+  const router = useRouter();
+  // const { userProfile, addUser, removeUser } = useAuthStore();
+
+  // useEffect(() => {
+  //   setUser(userProfile);
+  // }, [userProfile]);
+
+  const handleSearch = (e: { preventDefault: () => void }) => {
+    e.preventDefault();
+
+    if (searchValue) {
+      router.push(`/search/${searchValue}`);
+    }
+  };
+  return (
+    <div className="w-full max-w-7xl flex justify-between items-center border-b-[1px] border-gray-200 py-2 px-4">
+      <Link href="/">
+        <div className="flex  items-center justify-center">
+          <SiTiktok className="text-black w-7 h-7" />
+          <span className="text-black text-2xl md:text-3xl font-bold">
+            TikTok
+          </span>
+        </div>
+      </Link>
+
+      <div className="relative hidden md:block">
+        <form
+          onSubmit={handleSearch}
+          className="absolute md:static top-10 -left-20 bg-white flex items-center justify-center"
+        >
+          <input
+            value={searchValue}
+            onChange={(e) => setSearchValue(e.target.value)}
+            className="bg-primary p-3 text-sm font-medium border-[1px] border-gray-100 focus:outline-none focus:border-[1px] focus:border-gray-400 w-[300px] md:w-[350px] rounded-full  md:top-0 placeholder:font-light placeholder:text-sm"
+            placeholder="Search accounts and videos"
+          />
+          <button
+            onClick={handleSearch}
+            className="absolute md:right-3 right-4 border-l-2 border-gray-300 pl-3 text-2xl text-gray-400"
+          >
+            <BiSearch />
+          </button>
+        </form>
+      </div>
+      <div>
+        {user ? (
+          <div className="flex gap-5 md:gap-10">
+            <Link href="/upload">
+              <button className="border-2 px-2 md:px-4 text-md font-semibold flex items-center gap-2">
+                <IoMdAdd className="text-xl" />{" "}
+                <span className="hidden md:block">Upload </span>
+              </button>
+            </Link>
+            {user.image && (
+              <Link href={`/profile/${user._id}`}>
+                <div>
+                  <Image
+                    className="rounded-full cursor-pointer"
+                    src={user.image}
+                    alt="user"
+                    width={40}
+                    height={40}
+                  />
+                </div>
+              </Link>
+            )}
+            <button
+              type="button"
+              className=" border-2 p-2 rounded-full cursor-pointer outline-none shadow-md"
+              onClick={() => {
+                googleLogout();
+                // removeUser();
+              }}
+            >
+              <AiOutlineLogout color="red" fontSize={21} />
+            </button>
+          </div>
+        ) : (
+          <GoogleLogin
+            // onSuccess={(response) =>  console.log(response)}
+            onSuccess={(response) => createOrGetUser(response)}
+            // onSuccess={(response) => createOrGetUser(response, addUser)}
+            onError={() => console.log("Login Failed")}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default Header;
+
+
+```
+
+Now if you try to SignIn it creates a new user in the Sanity dashboard.
+
+We need to save the state somewhere and we use Zustand for this project.
+
+## Create a Store:
+
+Create a store folder in the root directoy. In it authStore.ts:
+
+```
+
+import create from "zustand";
+import { persist } from "zustand/middleware"; // persists lets the state remains active even after the page reload.
+import axios from "axios";
+
+import { BASE_URL } from "../utils";
+
+const authStore = (set: any) => ({
+  userProfile: null,
+  allUsers: [],
+
+  addUser: (user: any) => set({ userProfile: user }),
+  removeUser: () => set({ userProfile: null }),
+
+  fetchAllUsers: async () => {
+    const response = await axios.get(`${BASE_URL}/api/users`);
+
+    set({ allUsers: response.data });
+  },
+});
+
+const useAuthStore = create(
+  persist(authStore, {
+    name: "auth",
+  })
+);
+
+export default useAuthStore;
+
+```
+
+Use the store state in Header.tsx:
+
+```
+...
+import useAuthStore from '../store/authStore';
+
+function Header() {
+  const [user, setUser] = useState<IUser | null>();
+  const [searchValue, setSearchValue] = useState("");
+  const router = useRouter();
+  const { userProfile, addUser, removeUser } = useAuthStore();
+
+  useEffect(() => {
+    setUser(userProfile);
+  }, [userProfile]);
+
+...
+ <GoogleLogin
+            // onSuccess={(response) =>  console.log(response)}
+            // onSuccess={(response) => createOrGetUser(response)}
+            onSuccess={(response) => createOrGetUser(response, addUser)}
+            onError={() => console.log("Login Failed")}
+          />
+
+```
+
+Now in utils/index.ts:
+Include addUser as the 2nd parameter in createOrGetUser:
+
+```
+import axios from "axios";
+import jwt_decode from "jwt-decode";
+
+export const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
+
+// export const createOrGetUser = async (response: any) => {
+  export const createOrGetUser = async (response: any, addUser: any) => {
+  console.log(response.credential); // returns a json web token
+  const decoded: { name: string; picture: string; sub: string } = jwt_decode(
+    response.credential
+  ); // sub is a unique identifier for every user
+  console.log(decoded); // returns a json object
+  const { name, picture, sub } = decoded;
+
+  const user = {
+    _id: sub,
+    _type: "user",
+    userName: name,
+    image: picture,
+  };
+
+  addUser(user);
+  await axios.post(`${BASE_URL}/api/auth`, user);
+
+};
+
+```
+
+The user state is now persistent.
+
+In Header.tsx:
+
+```
+import Image from "next/image";
+import Link from "next/link";
+import { useRouter } from "next/router";
+import React, { useEffect, useState } from "react";
+import { SiTiktok } from "react-icons/si";
+import { AiOutlineLogout } from "react-icons/ai";
+import { BiSearch } from "react-icons/bi";
+import { IoMdAdd } from "react-icons/io";
+import { GoogleLogin, googleLogout } from "@react-oauth/google";
+import { createOrGetUser } from "../utils";
+import { IUser } from "../typings";
+import useAuthStore from '../store/authStore';
+
+function Header() {
+  // const user= false;
+  const [user, setUser] = useState<IUser | null>();
+  const [searchValue, setSearchValue] = useState("");
+  const router = useRouter();
+  const { userProfile, addUser, removeUser } = useAuthStore();
+console.log(userProfile);
+  useEffect(() => {
+    setUser(userProfile);
+  }, [userProfile]);
+
+  const handleSearch = (e: { preventDefault: () => void }) => {
+    e.preventDefault();
+
+    if (searchValue) {
+      router.push(`/search/${searchValue}`);
+    }
+  };
+  return (
+    <div className="w-full max-w-7xl flex justify-between items-center border-b-[1px] border-gray-200 py-2 px-4">
+      <Link href="/">
+        <div className="flex  items-center justify-center">
+          <SiTiktok className="text-black w-7 h-7" />
+          <span className="text-black text-2xl md:text-3xl font-bold">
+            TikTok
+          </span>
+        </div>
+      </Link>
+
+      <div className="relative hidden md:block">
+        <form
+          onSubmit={handleSearch}
+          className="absolute md:static top-10 -left-20 bg-white flex items-center justify-center"
+        >
+          <input
+            value={searchValue}
+            onChange={(e) => setSearchValue(e.target.value)}
+            className="bg-primary p-3 text-sm font-medium border-[1px] border-gray-100 focus:outline-none focus:border-[1px] focus:border-gray-400 w-[300px] md:w-[350px] rounded-full  md:top-0 placeholder:font-light placeholder:text-sm"
+            placeholder="Search accounts and videos"
+          />
+          <button
+            onClick={handleSearch}
+            className="absolute md:right-3 right-4 border-l-2 border-gray-300 pl-3 text-2xl text-gray-400"
+          >
+            <BiSearch />
+          </button>
+        </form>
+      </div>
+      <div>
+        {user ? (
+          <div className="flex gap-5 md:gap-10">
+            <Link href="/upload">
+              <button className="border-[1px] px-2 md:px-4 text-md font-semibold flex items-center gap-2">
+                <IoMdAdd className="text-xl" />{" "}
+                <span className="hidden md:block">Upload </span>
+              </button>
+            </Link>
+            {user.image && (
+              <Link href={`/profile/${user._id}`}>
+                <div>
+                  <Image
+                    className="rounded-full cursor-pointer"
+                    src={user.image}
+                    alt="user"
+                    width={40}
+                    height={40}
+                  />
+                </div>
+              </Link>
+            )}
+            <button
+              type="button"
+              className=" border-[1px] p-2 rounded-full cursor-pointer outline-none shadow-md"
+              onClick={() => {
+                googleLogout();
+                removeUser(); // remove from local storage
+              }}
+            >
+              <AiOutlineLogout color="red" fontSize={21} />
+            </button>
+          </div>
+        ) : (
+          <GoogleLogin
+            // onSuccess={(response) =>  console.log(response)}
+            // onSuccess={(response) => createOrGetUser(response)}
+            onSuccess={(response) => createOrGetUser(response, addUser)}
+            onError={() => console.log("Login Failed")}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default Header;
+
+```
+
+If you click on the upload button it takes you to the http://localhost:3000/upload. Create pages/upload.tsx:
+In upload.tsx"
+
+```
+import React, { useEffect, useState } from "react";
+import { useRouter } from "next/router";
+import { FaCloudUploadAlt } from "react-icons/fa";
+import { MdDelete } from "react-icons/md";
+import axios from "axios";
+import useAuthStore from "../store/authStore";
+import { sanityClient } from "../lib/sanity";
+import { SanityAssetDocument } from "@sanity/client";
+import { topics } from "../utils/constants";
+import { BASE_URL } from "../utils";
+
+const Upload = () => {
+  const [caption, setCaption] = useState("");
+  const [topic, setTopic] = useState<String>(topics[0].name);
+  const [loading, setLoading] = useState<Boolean>(false);
+  const [savingPost, setSavingPost] = useState<Boolean>(false);
+  const [videoAsset, setVideoAsset] = useState<
+    SanityAssetDocument | undefined
+  >();
+  const [wrongFileType, setWrongFileType] = useState<Boolean>(false);
+
+  const userProfile: any = useAuthStore((state) => state.userProfile);
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!userProfile) router.push("/");
+  }, [userProfile, router]);
+
+  const uploadVideo = async (e: any) => {
+    const selectedFile = e.target.files[0];
+    const fileTypes = ["video/mp4", "video/webm", "video/ogg"];
+
+    // uploading asset to sanity
+    if (fileTypes.includes(selectedFile.type)) {
+      setWrongFileType(false);
+      setLoading(true);
+
+      sanityClient.assets
+        .upload("file", selectedFile, {
+          contentType: selectedFile.type,
+          filename: selectedFile.name,
+        })
+        .then((data) => {
+          setVideoAsset(data);
+          setLoading(false);
+        });
+    } else {
+      setLoading(false);
+      setWrongFileType(true);
+    }
+  };
+
+  const handlePost = async () => {
+    if (caption && videoAsset?._id && topic) {
+      setSavingPost(true);
+
+      const doc = {
+        _type: "post",
+        caption,
+        video: {
+          _type: "file",
+          asset: {
+            _type: "reference",
+            _ref: videoAsset?._id,
+          },
+        },
+        userId: userProfile?._id,
+        postedBy: {
+          _type: "postedBy",
+          _ref: userProfile?._id,
+        },
+        topic,
+      };
+
+      await axios.post(`${BASE_URL}/api/post`, doc);
+
+      router.push("/");
+    }
+  };
+
+  const handleDiscard = () => {
+    setSavingPost(false);
+    setVideoAsset(undefined);
+    setCaption("");
+    setTopic("");
+  };
+
+  return (
+    <div className="flex w-full h-full absolute left-0 top-[60px] lg:top-[70px] mb-10 pt-10 lg:pt-20 bg-[#F8F8F8] justify-center">
+      <div className=" bg-white rounded-lg xl:h-[80vh] flex gap-6 flex-wrap justify-center items-center p-14 pt-6">
+        <div>
+          <div>
+            <p className="text-2xl font-bold">Upload Video</p>
+            <p className="text-md text-gray-400 mt-1">
+              Post a video to your account
+            </p>
+          </div>
+          <div className=" border-dashed rounded-xl border-4 border-gray-200 flex flex-col justify-center items-center  outline-none mt-10 w-[260px] h-[458px] p-10 cursor-pointer hover:border-red-300 hover:bg-gray-100">
+            {loading ? (
+              <p className="text-center text-3xl text-red-400 font-semibold">
+                Uploading...
+              </p>
+            ) : (
+              <div>
+                {!videoAsset ? (
+                  <label className="cursor-pointer">
+                    <div className="flex flex-col items-center justify-center h-full">
+                      <div className="flex flex-col justify-center items-center">
+                        <p className="font-bold text-xl">
+                          <FaCloudUploadAlt className="text-gray-300 text-6xl" />
+                        </p>
+                        <p className="text-xl font-semibold">
+                          Select video to upload
+                        </p>
+                      </div>
+
+                      <p className="text-gray-400 text-center mt-10 text-sm leading-10">
+                        MP4 or WebM or ogg <br />
+                        720x1280 resolution or higher <br />
+                        Up to 10 minutes <br />
+                        Less than 2 GB
+                      </p>
+                      <p className="bg-[#F51997] text-center mt-8 rounded text-white text-md font-medium p-2 w-52 outline-none">
+                        Select file
+                      </p>
+                    </div>
+                    <input
+                      type="file"
+                      name="upload-video"
+                      onChange={(e) => uploadVideo(e)}
+                      className="w-0 h-0"
+                    />
+                  </label>
+                ) : (
+                  <div className=" rounded-3xl w-[300px]  p-4 flex flex-col gap-6 justify-center items-center">
+                    <video
+                      className="rounded-xl h-[462px] mt-16 bg-black"
+                      controls
+                      loop
+                      src={videoAsset?.url}
+                    />
+                    <div className=" flex justify-between gap-20">
+                      <p className="text-lg">{videoAsset.originalFilename}</p>
+                      <button
+                        type="button"
+                        className=" rounded-full bg-gray-200 text-red-400 p-2 text-xl cursor-pointer outline-none hover:shadow-md transition-all duration-500 ease-in-out"
+                        onClick={() => setVideoAsset(undefined)}
+                      >
+                        <MdDelete />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          {wrongFileType && (
+            <p className="text-center text-xl text-red-400 font-semibold mt-4 w-[260px]">
+              Please select an video file (mp4 or webm or ogg)
+            </p>
+          )}
+        </div>
+        <div className="flex flex-col gap-3 pb-10">
+          <label className="text-md font-medium ">Caption</label>
+          <input
+            type="text"
+            value={caption}
+            onChange={(e) => setCaption(e.target.value)}
+            className="rounded lg:after:w-650 outline-none text-md border-2 border-gray-200 p-2"
+          />
+          <label className="text-md font-medium ">Choose a topic</label>
+
+          <select
+            onChange={(e) => {
+              setTopic(e.target.value);
+            }}
+            className="outline-none lg:w-650 border-2 border-gray-200 text-md capitalize lg:p-4 p-2 rounded cursor-pointer"
+          >
+            {topics.map((item) => (
+              <option
+                key={item.name}
+                className=" outline-none capitalize bg-white text-gray-700 text-md p-2 hover:bg-slate-300"
+                value={item.name}
+              >
+                {item.name}
+              </option>
+            ))}
+          </select>
+          <div className="flex gap-6 mt-10">
+            <button
+              onClick={handleDiscard}
+              type="button"
+              className="border-gray-300 border-2 text-md font-medium p-2 rounded w-28 lg:w-44 outline-none"
+            >
+              Discard
+            </button>
+            <button
+              disabled={videoAsset?.url ? false : true}
+              onClick={handlePost}
+              type="button"
+              className="bg-[#F51997] text-white text-md font-medium p-2 rounded w-28 lg:w-44 outline-none"
+            >
+              {savingPost ? "Posting..." : "Post"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Upload;
+
+```
+
+Next in pages/ap/post/index.ts write the POST method:
+
+```
+// Next.js API route support: https://nextjs.org/docs/api-routes/introduction
+import type { NextApiRequest, NextApiResponse } from "next";
+import { sanityClient } from "../../../lib/sanity";
+import { allPostsQuery } from "../../../utils/queries";
+
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
+  //   res.status(200).json({ name: "Response Success" });
+  if (req.method === "GET") {
+    const query = allPostsQuery();
+    const data = await sanityClient.fetch(query);
+    res.status(200).json(data);
+  } else if (req.method === "POST") {
+    const document = req.body;
+    sanityClient
+      .create(document)
+      .then(() => res.status(201).json("Video Created!"));
+  }
+}
+```
+
+Now try upload a new video. It should be added to the sanity dashboard.
+
+Next let's create the video detail page. In pages/create a new folder detail and in it [id].tsx:
+
+```
+import React from "react";
+
+const Detail = () => {
+  return <div>Detail</div>;
+};
+
+export default Detail;
+
+```
+
+In VideoCard.tsx component update this:
+
+```
+ <Link href="/">
+            <video
+              src={post.video.asset.url}
+              ref={videoRef}
+              loop
+              className="lg:w-[600px] h-[300px] md:h-[400px] lg:h-[530px] w-[200px] rounded-2xl cursor-pointer bg-gray-100"
+            />
+          </Link>
+```
+
+to this:
+
+```
+<Link href={`/detail/${post._id}`}>
+            <video
+              src={post.video.asset.url}
+              ref={videoRef}
+              loop
+              className="lg:w-[600px] h-[300px] md:h-[400px] lg:h-[530px] w-[200px] rounded-2xl cursor-pointer bg-gray-100"
+            />
+          </Link>
+```
+
+Creating the pages/detail/[id].tsx.
+As the url has /detail/id we will use getServerSideProps function to pre-fetch the server side details.
+
+In pages/api/post create [id].tsx:
+```
+import type { NextApiRequest, NextApiResponse } from "next";
+
+import { postDetailQuery } from "./../../../utils/queries";
+import { sanityClient } from "../../../lib/sanity";
+import { uuid } from "uuidv4";
+
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
+  if (req.method === "GET") {
+    const { id } = req.query;
+    const query = postDetailQuery(id);
+
+    const data = await sanityClient.fetch(query);
+
+    res.status(200).json(data[0]);
+  } else if (req.method === "PUT") {
+    const { comment, userId } = req.body;
+
+    const { id }: any = req.query;
+
+    const data = await sanityClient
+      .patch(id)
+      .setIfMissing({ comments: [] })
+      .insert("after", "comments[-1]", [
+        {
+          comment,
+          _key: uuid(),
+          postedBy: { _type: "postedBy", _ref: userId },
+        },
+      ])
+      .commit();
+
+    res.status(200).json(data);
+  }
+}
+
+```
+
+
+In pages/detail/[id].tsx:
+```
+import React, { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/router";
+import Image from "next/image";
+import Link from "next/link";
+import { GoVerified } from "react-icons/go";
+import { MdOutlineCancel } from "react-icons/md";
+import { BsFillPlayFill } from "react-icons/bs";
+import { HiVolumeUp, HiVolumeOff } from "react-icons/hi";
+
+import Comments from "../../components/Comments";
+import { BASE_URL } from "../../utils";
+import LikeButton from "../../components/LikeButton";
+import useAuthStore from "../../store/authStore";
+import { Video } from "../../typings";
+import axios from "axios";
+
+interface IProps {
+  postDetails: Video;
+}
+
+const Detail = ({ postDetails }: IProps) => {
+  const [post, setPost] = useState(postDetails);
+  const [isPlaying, setIsPlaying] = useState<boolean>(false);
+  const [isVideoMuted, setIsVideoMuted] = useState<boolean>(false);
+  const [isPostingComment, setIsPostingComment] = useState<boolean>(false);
+  const [comment, setComment] = useState<string>("");
+
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const router = useRouter();
+
+  const { userProfile }: any = useAuthStore();
+
+  const onVideoClick = () => {
+    if (isPlaying) {
+      videoRef?.current?.pause();
+      setIsPlaying(false);
+    } else {
+      videoRef?.current?.play();
+      setIsPlaying(true);
+    }
+  };
+
+  useEffect(() => {
+    if (post && videoRef?.current) {
+      videoRef.current.muted = isVideoMuted;
+    }
+  }, [post, isVideoMuted]);
+
+  const handleLike = async (like: boolean) => {
+    if (userProfile) {
+      const res = await axios.put(`${BASE_URL}/api/like`, {
+        userId: userProfile._id,
+        postId: post._id,
+        like,
+      });
+      setPost({ ...post, likes: res.data.likes });
+    }
+  };
+
+  const addComment = async (e: { preventDefault: () => void }) => {
+    e.preventDefault();
+
+    if (userProfile) {
+      if (comment) {
+        setIsPostingComment(true);
+        const res = await axios.put(`${BASE_URL}/api/post/${post._id}`, {
+          userId: userProfile._id,
+          comment,
+        });
+
+        setPost({ ...post, comments: res.data.comments });
+        setComment("");
+        setIsPostingComment(false);
+      }
+    }
+  };
+
+  return (
+    <>
+      {post && (
+        <div className="flex w-full absolute left-0 top-0 bg-white flex-wrap lg:flex-nowrap">
+          <div className="relative flex-2 w-[1000px] lg:w-9/12 flex justify-center items-center bg-blurred-img bg-no-repeat bg-cover bg-center">
+            <div className="opacity-90 absolute top-6 left-2 lg:left-6 flex gap-6 z-50">
+              <p className="cursor-pointer " onClick={() => router.back()}>
+                <MdOutlineCancel className="text-white text-[35px] hover:opacity-90" />
+              </p>
+            </div>
+            <div className="relative">
+              <div className="lg:h-[100vh] h-[60vh]">
+                <video
+                  ref={videoRef}
+                  onClick={onVideoClick}
+                  loop
+                  src={post?.video?.asset.url}
+                  className=" h-full cursor-pointer"
+                ></video>
+              </div>
+
+              <div className="absolute top-[45%] left-[40%]  cursor-pointer">
+                {!isPlaying && (
+                  <button onClick={onVideoClick}>
+                    <BsFillPlayFill className="text-white text-6xl lg:text-8xl" />
+                  </button>
+                )}
+              </div>
+            </div>
+            <div className="absolute bottom-5 lg:bottom-10 right-5 lg:right-10  cursor-pointer">
+              {isVideoMuted ? (
+                <button onClick={() => setIsVideoMuted(false)}>
+                  <HiVolumeOff className="text-white text-3xl lg:text-4xl" />
+                </button>
+              ) : (
+                <button onClick={() => setIsVideoMuted(true)}>
+                  <HiVolumeUp className="text-white text-3xl lg:text-4xl" />
+                </button>
+              )}
+            </div>
+          </div>
+          <div className="relative w-[1000px] md:w-[900px] lg:w-[700px]">
+            <div className="lg:mt-20 mt-10">
+              <Link href={`/profile/${post.postedBy._id}`}>
+                <div className="flex gap-4 mb-4 bg-white w-full pl-10 cursor-pointer">
+                  <Image
+                    width={60}
+                    height={60}
+                    alt="user-profile"
+                    className="rounded-full"
+                    src={post.postedBy.image}
+                  />
+                  <div>
+                    <div className="text-xl font-bold lowercase tracking-wider flex gap-2 items-center justify-center">
+                      {post.postedBy.userName.replace(/\s+/g, "")}{" "}
+                      <GoVerified className="text-blue-400 text-xl" />
+                    </div>
+                    <p className="text-md"> {post.postedBy.userName}</p>
+                  </div>
+                </div>
+              </Link>
+              <div className="px-10">
+                <p className=" text-md text-gray-600">{post.caption}</p>
+              </div>
+              <div className="mt-10 px-10">
+                {userProfile && (
+                  <LikeButton
+                    likes={post.likes}
+                    flex="flex"
+                    handleLike={() => handleLike(true)}
+                    handleDislike={() => handleLike(false)}
+                  />
+                )}
+              </div>
+              <Comments
+                comment={comment}
+                setComment={setComment}
+                addComment={addComment}
+                comments={post.comments}
+                isPostingComment={isPostingComment}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+};
+
+export const getServerSideProps = async ({
+  params: { id },
+}: {
+  params: { id: string };
+}) => {
+  const res = await axios.get(`${BASE_URL}/api/post/${id}`);
+
+  return {
+    props: { postDetails: res.data },
+  };
+};
+
+export default Detail;
+
+```
+
+
+
+
+
+
+
+
+
+```
+import axios from "axios";
+
+export const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
+
+export const createOrGetUser = async (response: any, addUser: any) => {
+  var base64Url = response.credential.split(".")[1];
+  var base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+  var jsonPayload = decodeURIComponent(
+    atob(base64)
+      .split("")
+      .map(function (c) {
+        return "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2);
+      })
+      .join("")
+  );
+
+  const { name, picture, sub } = JSON.parse(jsonPayload);
+
+  const user = {
+    _id: sub,
+    _type: "user",
+    userName: name,
+    image: picture,
+  };
+
+  addUser(user);
+
+  await axios.post(`${BASE_URL}/api/auth`, user);
+};
 
 ```
 

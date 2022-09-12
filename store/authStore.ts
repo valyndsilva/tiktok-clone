@@ -1,5 +1,5 @@
 import create from "zustand";
-import { persist } from "zustand/middleware";
+import { persist } from "zustand/middleware"; // persists lets the state remains active even after the page reload.
 import axios from "axios";
 
 import { BASE_URL } from "../utils";

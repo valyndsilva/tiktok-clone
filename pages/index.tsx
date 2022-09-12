@@ -2,6 +2,7 @@ import axios from "axios";
 import { NextPage } from "next";
 import { NoResults, VideoCard } from "../components";
 import { Video } from "../typings";
+import { BASE_URL } from "../utils";
 interface IProps {
   videos: Video[];
 }
@@ -26,7 +27,7 @@ export const getServerSideProps = async () => {
   // console.log(res.data.name);
 
   // fetch new videos each time we load the page
-  const { data } = await axios.get(`http://localhost:3000/api/post`);
+  const { data } = await axios.get(`${BASE_URL}/api/post`);
   console.log(data);
   return {
     props: {
