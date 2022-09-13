@@ -3015,3 +3015,11 @@ export default async function handler(
 }
 
 ```
+
+Deploy to Vercel. You should get a 500 Server Error.
+
+Next add the vercel url to Google Cloud Services:
+Credentials -> tiktok-clone -> Authorized JavaScript origins & Authorized URIs -> ADD URI
+
+Next add the vercel url to Sanity Dashboard
+In Sanity -> API -> CORS Origins
