@@ -33,16 +33,332 @@ Edit the .gitignore file. Change /node_modules to node_modules
 This targets all modules within the project folder
 Next, delete .babelrc, yarn.lock files
 
-###
+# Setup Components Structure:
+
+In components folder create index.tsx and Layout.tsx:
+
+In Layout.tsx:
+
+```
+import Head from "next/head";
+import React from "react";
+
+type LayoutProps = React.PropsWithChildren<{}>;
+function Layout({ children }: LayoutProps) {
+  return (
+    <>
+      <Head>
+        <title>TikTok Clone</title>
+        <link rel="icon" href="/favicon.ico" />
+        <meta name="description" content="TikTok Clone" />
+      </Head>
+      <div>
+        <main>{children}</main>
+      </div>
+    </>
+  );
+}
+
+export default Layout;
+
+```
+
+In index.tsx:
+
+```
+export { default as Layout } from "./Layout";
+export { default as Header } from "./Header";
+export { default as Footer } from "./Footer";
+export { default as FooterList } from "./FooterList";
+export { default as Sidebar } from "./Sidebar";
+export { default as Discover } from "./Discover";
+export { default as SuggestedAccounts } from "./SuggestedAccounts";
+export { default as VideoCard } from "./VideoCard";
+export { default as NoResults } from "./NoResults";
+export { default as Comments } from "./Comments";
+export { default as LikeButton } from "./LikeButton";
+export { default as SearchInput } from "./SearchInput";
+export { default as ProfileInfo } from "./ProfileInfo";
+
+```
+
+In pages folder create 404.tsx, \_document.tsx:
+
+In 404.tsx:
+
+```
+import { NextPage } from "next";
+
+const NotFound: NextPage = () => {
+  return (
+    <div className="text-center text-gray-600 font-semibold mt-20 text-2xl">
+      Oops! page not found 😢
+    </div>
+  );
+};
+
+export default NotFound;
+
+```
+
+In \_document.tsx:
+
+```
+import { Html, Head, Main, NextScript } from "next/document";
+
+export default function Document() {
+  return (
+    <Html>
+      <Head></Head>
+      <body>
+        <Main />
+        <NextScript />
+      </body>
+    </Html>
+  );
+}
+
+```
+
+Open \_app.tsx:
+
+```
+import "../styles/globals.css";
+import type { AppProps } from "next/app";
+import { Layout } from "../components";
+
+function MyApp({ Component, pageProps }: AppProps) {
+  return (
+    <Layout>
+      <Component {...pageProps} />
+    </Layout>
+  );
+}
+
+export default MyApp;
+
+```
+
+In pages/index.tsx clear the unwanted bits:
+
+```
+import type { NextPage } from "next";
+
+const Home: NextPage = () => {
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-center py-2">
+      TikTok
+    </div>
+  );
+};
+
+export default Home;
+
+```
+
+Also, create a utils folder in the root and in it index.ts:
+
+```
+import axios from "axios";
+import jwt_decode from "jwt-decode";
+
+export const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
+
+// export const createOrGetUser = async (response: any) => {
+export const createOrGetUser = async (response: any, addUser: any) => {
+  console.log(response.credential); // returns a json web token
+  const decoded: { name: string; picture: string; sub: string } = jwt_decode(
+    response.credential
+  ); // sub is a unique identifier for every user
+  console.log(decoded); // returns a json object
+  const { name, picture, sub } = decoded;
+
+  const user = {
+    _id: sub,
+    _type: "user",
+    userName: name,
+    image: picture,
+  };
+
+  addUser(user);
+  await axios.post(`${BASE_URL}/api/auth`, user);
+};
+
+```
+
+In utils folder also create a constants.tsx:
+
+```
+import { BsCode, BsEmojiSunglasses } from "react-icons/bs";
+import { GiCakeSlice, GiGalaxy, GiLipstick } from "react-icons/gi";
+import { FaPaw, FaMedal, FaGamepad } from "react-icons/fa";
+
+export const topics = [
+  {
+    name: "development",
+    icon: <BsCode className="w-6 h-6" />,
+  },
+  {
+    name: "comedy",
+    icon: <BsEmojiSunglasses className="w-6 h-6" />,
+  },
+  {
+    name: "gaming",
+    icon: <FaGamepad className="w-6 h-6" />,
+  },
+  {
+    name: "food",
+    icon: <GiCakeSlice className="w-6 h-6" />,
+  },
+  {
+    name: "dance",
+    icon: <GiGalaxy className="w-6 h-6" />,
+  },
+  {
+    name: "beauty",
+    icon: <GiLipstick className="w-6 h-6" />,
+  },
+  {
+    name: "animals",
+    icon: <FaPaw className="w-6 h-6" />,
+  },
+  {
+    name: "sports",
+    icon: <FaMedal className="w-6 h-6" />,
+  },
+];
+
+export const footerList1 = [
+  "About",
+  "TikTok Browse",
+  "Newsroom",
+  "TikTok Shop",
+  "Contact",
+  "Careers",
+  "ByteDance",
+];
+export const footerList2 = [
+  "TikTik for Good",
+  "Advertise",
+  "Developers",
+  "Transparency",
+  "TikTik Rewards",
+];
+export const footerList3 = [
+  "Help",
+  "Safety",
+  "Terms",
+  "Privacy",
+  "Creator Portal",
+  "Community Guidelines",
+];
+
+```
+
+### Tailwind CSS
+
+Open styles/global.css:
+
+```
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body {
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.videos::-webkit-scrollbar {
+  width: 0px;
+}
+
+::-webkit-scrollbar {
+  width: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: rgb(237, 237, 237);
+  border-radius: 40px;
+}
+
+::-webkit-scrollbar-track {
+  background-color: transparent;
+}
+
+```
+
+Next open tailwind.config.js:
 
 In tailwind.config.js add the twitter hex color to use in SidebarRow.js:
 
 ```
- extend: {
+/** @type {import('tailwindcss').Config} */
+module.exports = {
+  content: [
+    "./pages/**/*.{js,ts,jsx,tsx}",
+    "./components/**/*.{js,ts,jsx,tsx}",
+  ],
+  theme: {
+    extend: {
+      width: {
+        1600: "1600px",
+        400: "400px",
+        450: "450px",
+        210: "210px",
+        550: "550px",
+        260: "260px",
+        650: "650px",
+      },
+      height: {
+        600: "600px",
+        280: "280px",
+        900: "900px",
+        458: "458px",
+      },
+      top: {
+        " 50%": "50%",
+      },
+      backgroundColor: {
+        primary: "#F1F1F2",
+        blur: "#030303",
+      },
       colors: {
-        tiktok: '#F52C56',
+        primary: "rgb(22, 24, 35)",
+        tiktok: "#F52C56",
+      },
+      height: {
+        "88vh": "88vh",
+      },
+      backgroundImage: {
+        "blurred-img":
+          "url('https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSsaaJ7s4lqcBF4IDROVPzrlL5fexcwRmDlnuEYQenWTt1DejFY5kmYDref2a0Hp2eE4aw&usqp=CAU')",
       },
     },
+  },
+  plugins: [],
+};
+
+```
+
+Next test your app if tailwind works properly:
+In index.tsx:
+
+```
+ <h1 class="text-3xl font-bold underline">
+    Hello world!
+  </h1>
 ```
 
 ## Install Sanity Studio:
@@ -295,7 +611,7 @@ npm install --dev next-sanity
 npm install --save groq
 ```
 
-Next. create a folder called "utils" in the root directory and in it a file called "queries.ts":
+Next in "utils" in the root directory create a file called "queries.ts":
 
 In utils/queries.ts:
 
@@ -332,7 +648,7 @@ export const allPostsQuery = () => {
   return query;
 };
 
-export const postDetailQuery = (postId: string | string[]) => {
+export const postDetailQuery = (postId: string | string[] | undefined) => {
   const query = groq`*[_type == "post" && _id == '${postId}']{
       _id,
        caption,
@@ -361,7 +677,7 @@ export const postDetailQuery = (postId: string | string[]) => {
   return query;
 };
 
-export const searchPostsQuery = (searchTerm: string | string[]) => {
+export const searchPostsQuery = (searchTerm: string | string[] | undefined) => {
   const query = groq`*[_type == "post" && caption match '${searchTerm}*' || topic match '${searchTerm}*'] {
       _id,
        caption,
@@ -391,7 +707,7 @@ export const searchPostsQuery = (searchTerm: string | string[]) => {
   return query;
 };
 
-export const singleUserQuery = (userId: string | string[]) => {
+export const singleUserQuery = (userId: string | string[] | undefined) => {
   const query = groq`*[_type == "user" && _id == '${userId}']`;
 
   return query;
@@ -403,7 +719,9 @@ export const allUsersQuery = () => {
   return query;
 };
 
-export const userCreatedPostsQuery = (userId: string | string[]) => {
+export const userCreatedPostsQuery = (
+  userId: string | string[] | undefined
+) => {
   const query = groq`*[ _type == 'post' && userId == '${userId}'] | order(_createdAt desc){
       _id,
        caption,
@@ -435,7 +753,7 @@ export const userCreatedPostsQuery = (userId: string | string[]) => {
   return query;
 };
 
-export const userLikedPostsQuery = (userId: string | string[]) => {
+export const userLikedPostsQuery = (userId: string | string[] | undefined) => {
   const query = groq`*[_type == 'post' && '${userId}' in likes[]._ref ] | order(_createdAt desc) {
       _id,
        caption,
@@ -467,7 +785,7 @@ export const userLikedPostsQuery = (userId: string | string[]) => {
   return query;
 };
 
-export const topicPostsQuery = (topic: string | string[]) => {
+export const topicPostsQuery = (topic: string | string[] | undefined) => {
   const query = groq`*[_type == "post" && topic match '${topic}*'] {
       _id,
        caption,
@@ -509,12 +827,11 @@ NextJS gives us API endpoints out of the box.
 We will create an endpoint for fetching posts and then fetch from our own server.
 Instead of contacting sanity directly from our browser we will create npm endpoints and connect to these endpoints which then on our server makes communication to sanity. This is also a safer alternative.
 
-### Create a new API endpoint in pages/api/post/index.ts:
+### Create a new backend API endpoint in pages/api/post/index.ts:
 
 In pages/api/post/index.ts:
 
 ```
-// Next.js API route support: https://nextjs.org/docs/api-routes/introduction
 import type { NextApiRequest, NextApiResponse } from "next";
 import { sanityClient } from "../../../lib/sanity";
 import { allPostsQuery } from "../../../utils/queries";
@@ -576,7 +893,11 @@ export const getServerSideProps = async () => {
 
 ```
 
-### Create a custom type by creating a typings.d.ts in the root directory:
+### Create a custom TypeScript type by creating a typings.d.ts in the root directory:
+
+You can create types for anything in your application, including prop types, API responses, arguments for your utility functions, and even properties of your global state!
+We first create a type for our Video and IUser. The interface below reflects the shape of a Video object and IUser.
+typings.d.ts or types.d.ts:
 
 Refer to pages/index.tsx videos props structure in the browser console and create a typings.d.ts in the root directory accordingly.
 
@@ -660,8 +981,8 @@ export const getServerSideProps = async () => {
 
 ```
 
-Create 2 new components VideoCard.tsx and NoResults.tsx:
 In VideoCard.tsx:
+Create 2 new components VideoCard.tsx and NoResults.tsx:
 
 ```
 import { NextPage } from "next";
@@ -775,6 +1096,13 @@ const VideoCard: NextPage<IProps> = ({ post }) => {
       setPlaying(true);
     }
   };
+
+
+  useEffect(() => {
+    if (videoRef?.current) {
+      videoRef.current.muted = isVideoMuted;
+    }
+  }, [isVideoMuted]);
 
   return (
     <div className="flex flex-col border-b-[1px] border-gray-200 pb-6">
@@ -1624,6 +1952,7 @@ Creating the pages/detail/[id].tsx.
 As the url has /detail/id we will use getServerSideProps function to pre-fetch the server side details.
 
 In pages/api/post create [id].tsx:
+
 ```
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -1665,8 +1994,8 @@ export default async function handler(
 
 ```
 
-
 In pages/detail/[id].tsx:
+
 ```
 import React, { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/router";
@@ -1700,7 +2029,7 @@ const Detail = ({ postDetails }: IProps) => {
 
   const { userProfile }: any = useAuthStore();
 
-  const onVideoClick = () => {
+  const handleVideoClick = () => {
     if (isPlaying) {
       videoRef?.current?.pause();
       setIsPlaying(false);
@@ -1759,7 +2088,7 @@ const Detail = ({ postDetails }: IProps) => {
               <div className="lg:h-[100vh] h-[60vh]">
                 <video
                   ref={videoRef}
-                  onClick={onVideoClick}
+                  onClick={handleVideoClick}
                   loop
                   src={post?.video?.asset.url}
                   className=" h-full cursor-pointer"
@@ -1768,7 +2097,7 @@ const Detail = ({ postDetails }: IProps) => {
 
               <div className="absolute top-[45%] left-[40%]  cursor-pointer">
                 {!isPlaying && (
-                  <button onClick={onVideoClick}>
+                  <button onClick={handleVideoClick}>
                     <BsFillPlayFill className="text-white text-6xl lg:text-8xl" />
                   </button>
                 )}
@@ -1850,326 +2179,839 @@ export default Detail;
 
 ```
 
-
-
-
-
-
-
-
+In components/LikeButton.tsx:
 
 ```
-import axios from "axios";
-
-export const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
-
-export const createOrGetUser = async (response: any, addUser: any) => {
-  var base64Url = response.credential.split(".")[1];
-  var base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
-  var jsonPayload = decodeURIComponent(
-    atob(base64)
-      .split("")
-      .map(function (c) {
-        return "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2);
-      })
-      .join("")
-  );
-
-  const { name, picture, sub } = JSON.parse(jsonPayload);
-
-  const user = {
-    _id: sub,
-    _type: "user",
-    userName: name,
-    image: picture,
-  };
-
-  addUser(user);
-
-  await axios.post(`${BASE_URL}/api/auth`, user);
-};
-
-```
-
-# Setup Project Structure:
-
-In components folder create index.tsx and Layout.tsx:
-
-In Layout.tsx:
-
-```
-import Head from "next/head";
-import React from "react";
-
-type LayoutProps = React.PropsWithChildren<{}>;
-function Layout({ children }: LayoutProps) {
-  return (
-    <>
-      <Head>
-        <title>TikTok Clone</title>
-        <link rel="icon" href="/favicon.ico" />
-        <meta name="description" content="TikTok Clone" />
-      </Head>
-      <div>
-        <main>{children}</main>
-      </div>
-    </>
-  );
-}
-
-export default Layout;
-
-```
-
-In index.tsx:
-
-```
-export { default as Layout } from "./Layout";
-
-```
-
-In pages folder create 404.tsx, \_document.tsx:
-
-In 404.tsx:
-
-```
+import React, { useEffect, useState } from "react";
+import { MdFavorite } from "react-icons/md";
 import { NextPage } from "next";
 
-const NotFound: NextPage = () => {
+import useAuthStore from "../store/authStore";
+
+interface IProps {
+  likes: any;
+  flex: string;
+  handleLike: () => void;
+  handleDislike: () => void;
+}
+
+const LikeButton: NextPage<IProps> = ({
+  likes,
+  flex,
+  handleLike,
+  handleDislike,
+}) => {
+  const [alreadyLiked, setAlreadyLiked] = useState(false);
+  const { userProfile }: any = useAuthStore();
+  let filterLikes = likes?.filter(
+    (item: any) => item._ref === userProfile?._id
+  );
+
+  useEffect(() => {
+    if (filterLikes?.length > 0) {
+      setAlreadyLiked(true);
+    } else {
+      setAlreadyLiked(false);
+    }
+  }, [filterLikes, likes]);
+
   return (
-    <div className="text-center text-gray-600 font-semibold mt-20 text-2xl">
-      Oops! page not found 😢
+    <div className={`${flex} gap-6`}>
+      <div className="mt-4 flex flex-col justify-center items-center cursor-pointer">
+        {alreadyLiked ? (
+          <div
+            className="bg-primary rounded-full p-2 md:p-4 text-[#F51997] "
+            onClick={handleDislike}
+          >
+            <MdFavorite className="text-lg md:text-2xl" />
+          </div>
+        ) : (
+          <div
+            className="bg-primary rounded-full p-2 md:p-4 "
+            onClick={handleLike}
+          >
+            <MdFavorite className="text-lg md:text-2xl" />
+          </div>
+        )}
+        <p className="text-md font-semibold ">{likes?.length || 0}</p>
+      </div>
     </div>
   );
 };
 
-export default NotFound;
+export default LikeButton;
 
 ```
 
-In \_document.tsx:
+Next in pages/api/like.ts:
 
 ```
-import { Html, Head, Main, NextScript } from "next/document";
+import type { NextApiRequest, NextApiResponse } from "next";
+import { uuid } from "uuidv4"; // lets you attach a uid to every single like request
 
-export default function Document() {
-  return (
-    <Html>
-      <Head></Head>
-      <body>
-        <Main />
-        <NextScript />
-      </body>
-    </Html>
-  );
+import { sanityClient } from "../../lib/sanity";
+
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
+  if (req.method === "PUT") {
+    const { userId, postId, like } = req.body;
+
+    const data = like
+      ? await sanityClient
+          .patch(postId)
+          .setIfMissing({ likes: [] })
+          .insert("after", "likes[-1]", [
+            {
+              _key: uuid(),
+              _ref: userId,
+            },
+          ])
+          .commit()
+      : await sanityClient
+          .patch(postId)
+          .unset([`likes[_ref=="${userId}"]`])
+          .commit();
+    res.status(200).json(data);
+  }
+}
+// Like and unline posts using sanity client
+
+```
+
+In NoResults.tsx:
+
+```
+import React from 'react';
+import { MdOutlineVideocamOff } from 'react-icons/md';
+
+interface IProps {
+  text: string;
 }
 
-```
-
-Open \_app.tsx:
-
-```
-import "../styles/globals.css";
-import type { AppProps } from "next/app";
-import { Layout } from "../components";
-
-function MyApp({ Component, pageProps }: AppProps) {
+const NoResults = ({ text }: IProps) => {
   return (
-    <Layout>
-      <Component {...pageProps} />
-    </Layout>
-  );
-}
-
-export default MyApp;
-
-```
-
-In pages/index.tsx clear the unwanted bits:
-
-```
-import type { NextPage } from "next";
-
-const Home: NextPage = () => {
-  return (
-    <div className="flex min-h-screen flex-col items-center justify-center py-2">
-      TikTok
+    <div className='flex flex-col justify-center items-center h-full w-full'>
+      <p className='text-8xl'>
+        <MdOutlineVideocamOff />
+      </p>
+      <p className='text-2xl text-center'>{text}</p>
     </div>
   );
 };
 
-export default Home;
+export default NoResults;
 
 ```
 
-Now open styles/global.css:
+We need to fetch all user accounts that exist on the application before fetching the user comments and suggested accounts.
+
+First create a new endpoint for the users in pages/api/users.ts file:
 
 ```
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+import type { NextApiRequest, NextApiResponse } from "next";
+import { sanityClient } from "../../lib/sanity";
+import { allUsersQuery } from "./../../utils/queries";
 
-html,
-body {
-  padding: 0;
-  margin: 0;
-  box-sizing: border-box;
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
+  //   res.status(200).json({ name: "Response Success" });
+  if (req.method === "GET") {
+    const data = await sanityClient.fetch(allUsersQuery());
+
+    if (data) {
+      res.status(200).json(data);
+    } else {
+      res.json([]);
+    }
+  }
 }
-
-a {
-  color: inherit;
-  text-decoration: none;
-}
-
-* {
-  box-sizing: border-box;
-}
-
-.videos::-webkit-scrollbar {
-  width: 0px;
-}
-
-::-webkit-scrollbar {
-  width: 4px;
-}
-
-::-webkit-scrollbar-thumb {
-  background-color: rgb(237, 237, 237);
-  border-radius: 40px;
-}
-
-::-webkit-scrollbar-track {
-  background-color: transparent;
-}
-
 ```
 
-Next open tailwind.config.js:
+Open store/authStore.ts:
 
 ```
-/** @type {import('tailwindcss').Config} */
-module.exports = {
-  content: [
-    "./pages/**/*.{js,ts,jsx,tsx}",
-    "./components/**/*.{js,ts,jsx,tsx}",
-  ],
-  theme: {
-    extend: {
-      width: {
-        1600: "1600px",
-        400: "400px",
-        450: "450px",
-        210: "210px",
-        550: "550px",
-        260: "260px",
-        650: "650px",
-      },
-      height: {
-        600: "600px",
-        280: "280px",
-        900: "900px",
-        458: "458px",
-      },
-      top: {
-        " 50%": "50%",
-      },
-      backgroundColor: {
-        primary: "#F1F1F2",
-        blur: "#030303",
-      },
-      colors: {
-        primary: "rgb(22, 24, 35)",
-      },
-      height: {
-        "88vh": "88vh",
-      },
-      backgroundImage: {
-        "blurred-img":
-          "url('https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSsaaJ7s4lqcBF4IDROVPzrlL5fexcwRmDlnuEYQenWTt1DejFY5kmYDref2a0Hp2eE4aw&usqp=CAU')",
-      },
-    },
-  },
-  plugins: [],
-};
-
-```
-
-Next test your app if tailwind works properly:
-In index.tsx:
-
-```
- <h1 class="text-3xl font-bold underline">
-    Hello world!
-  </h1>
-```
-
-# Creating TypeScript types in Next.js:
-
-You can create types for anything in your application, including prop types, API responses, arguments for your utility functions, and even properties of your global state!
-
-We first create a type for our Video and IUser. The interface below reflects the shape of a Video object and IUser.
-
-typings.d.ts or types.d.ts:
-
-```
-
-```
-
-# Creating components in Next.js:
-
-In Header.tsx:
-
-```
-
-
-```
-
-We need to fetch new videos everytime the page loads so we use getServerSideProps and axios. We need to make the get request to our own backend and NextJS let's us create our own backend server.
-
-Open index.tsx:
-
-```
-import type { NextPage } from "next";
+import create from "zustand";
+import { persist } from "zustand/middleware"; // persists lets the state remains active even after the page reload.
 import axios from "axios";
 
-const Home: NextPage = () => {
+import { BASE_URL } from "../utils";
+
+const authStore = (set: any) => ({
+  userProfile: null,
+  allUsers: [],
+
+  addUser: (user: any) => set({ userProfile: user }),
+  removeUser: () => set({ userProfile: null }),
+
+  fetchAllUsers: async () => {
+    const response = await axios.get(`${BASE_URL}/api/users`);
+
+    set({ allUsers: response.data });
+  },
+});
+
+const useAuthStore = create(
+  persist(authStore, {
+    name: "auth",
+  })
+);
+
+export default useAuthStore;
+
+```
+
+Next, in components/SuggestedAccounts.tsx:
+
+```
+import Image from "next/image";
+import Link from "next/link";
+import React, { useEffect } from "react";
+import { GoVerified } from "react-icons/go";
+
+import { IUser } from "../typings";
+
+interface Users {
+  fetchAllUsers: () => void;
+  allUsers: IUser[];
+}
+
+function SuggestedAccounts({ fetchAllUsers, allUsers }: Users) {
+  useEffect(() => {
+    fetchAllUsers();
+  }, [fetchAllUsers]);
+
+  const users = allUsers
+    .sort(() => 0.5 - Math.random())
+    .slice(0, allUsers.length);
+
   return (
-    <div>
-      <h1 className="text-3xl font-bold underline"></h1>
+    <div className="xl:border-b-[1px] border-gray-200 pb-4">
+      <p className="text-xs text-gray-500 font-semibold m-3 mt-4 hidden xl:block">
+        Suggested accounts
+      </p>
+      <div>
+        {users?.slice(0, 6).map((user: IUser) => (
+          <Link href={`/profile/${user._id}`} key={user._id}>
+            <div className="flex gap-3 hover:bg-primary p-2 cursor-pointer font-semibold rounded">
+              <div className="w-8 h-8">
+                <Image
+                  width={34}
+                  height={34}
+                  className="rounded-full"
+                  src={user.image}
+                  alt="user-profile"
+                  layout="responsive"
+                />
+              </div>
+
+              <div className="hidden xl:block">
+                <p className="flex gap-1 items-center text-md font-bold text-primary lowercase">
+                  {user.userName.replace(/\s+/g, "")}{" "}
+                  <GoVerified className="text-blue-400" />
+                </p>
+                <p className="capitalize text-gray-400 text-xs">
+                  {user.userName}
+                </p>
+              </div>
+            </div>
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export default SuggestedAccounts;
+
+```
+
+Next, let's loop over all of the profiles and comments:
+
+In components/Comments.tsx:
+
+```
+import React, { Dispatch, SetStateAction } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import { GoVerified } from "react-icons/go";
+
+import useAuthStore from "../store/authStore";
+import NoResults from "./NoResults";
+import { IUser } from "../types";
+
+interface IProps {
+  isPostingComment: Boolean;
+  comment: string;
+  setComment: Dispatch<SetStateAction<string>>;
+  addComment: (e: React.FormEvent) => void;
+  comments: IComment[];
+}
+
+interface IComment {
+  comment: string;
+  length?: number;
+  _key: string;
+  postedBy: { _ref?: string; _id?: string };
+}
+
+const Comments = ({
+  comment,
+  setComment,
+  addComment,
+  comments,
+  isPostingComment,
+}: IProps) => {
+  const { allUsers, userProfile }: any = useAuthStore();
+
+  return (
+    <div className="border-t-2 border-gray-200 pt-4 px-10 mt-4 bg-[#F8F8F8] border-b-2 lg:pb-0 pb-[100px]">
+      <div className="overflow-scroll lg:h-[457px]">
+        {comments?.length > 0 ? (
+          comments?.map((item: IComment, idx: number) => (
+            <>
+              {allUsers?.map(
+                (user: IUser) =>
+                  user._id === (item.postedBy._ref || item.postedBy._id) && (
+                    <div className=" p-2 items-center" key={idx}>
+                      <Link href={`/profile/${user._id}`}>
+                        <div className="flex items-start gap-3">
+                          <div className="w-12 h-12">
+                            <Image
+                              width={48}
+                              height={48}
+                              className="rounded-full cursor-pointer"
+                              src={user.image}
+                              alt="user-profile"
+                              layout="responsive"
+                            />
+                          </div>
+
+                          <p className="flex cursor-pointer gap-1 items-center text-[18px] font-bold leading-6 text-primary">
+                            {user.userName}{" "}
+                            <GoVerified className="text-blue-400" />
+                          </p>
+                        </div>
+                      </Link>
+                      <div>
+                        <p className="-mt-5 ml-16 text-[16px] mr-8">
+                          {item.comment}
+                        </p>
+                      </div>
+                    </div>
+                  )
+              )}
+            </>
+          ))
+        ) : (
+          <NoResults text="No Comments Yet! Be First to do add the comment." />
+        )}
+      </div>
+      {userProfile && (
+        <div className="absolute bottom-0 left-0  pb-6 px-2 md:px-10 ">
+          <form onSubmit={addComment} className="flex gap-4">
+            <input
+              value={comment}
+              onChange={(e) => setComment(e.target.value.trim())}
+              className="bg-primary px-6 py-4 text-md font-medium border-2 w-[250px] md:w-[700px] lg:w-[350px] border-gray-100 focus:outline-none focus:border-2 focus:border-gray-300 flex-1 rounded-lg"
+              placeholder="Add comment.."
+            />
+            <button className="text-md text-gray-400 " onClick={addComment}>
+              {isPostingComment ? "Commenting..." : "Comment"}
+            </button>
+          </form>
+        </div>
+      )}
     </div>
   );
 };
 
-export default Home;
+export default Comments;
 
-export const getServerSideProps = async () => {
-  // fetch new videos each time we load the page
-  const res = await axios.get(`http://localhost:3000/api/post`);
-  console.log(res.data.name);
+
+```
+
+Now, update pages/api/post/[id].ts:
+
+```
+import type { NextApiRequest, NextApiResponse } from "next";
+
+import { postDetailQuery } from "./../../../utils/queries";
+import { sanityClient } from "../../../lib/sanity";
+import { uuid } from "uuidv4";
+
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
+  if (req.method === "GET") {
+    const { id } = req.query;
+    const query = postDetailQuery(id);
+
+    const data = await sanityClient.fetch(query);
+
+    res.status(200).json(data[0]);
+
+  } else if (req.method === "PUT") {
+    const { comment, userId } = req.body;
+
+    const { id }: any = req.query;
+
+    const data = await sanityClient
+      .patch(id)
+      .setIfMissing({ comments: [] })
+      .insert("after", "comments[-1]", [
+        {
+          comment,
+          _key: uuid(),
+          postedBy: { _type: "postedBy", _ref: userId },
+        },
+      ])
+      .commit();
+
+    res.status(200).json(data);
+  }
+}
+
+```
+
+If you leave a comment in the detail page you can see the comments in the sanity dashboard under Post section and the detail page.
+
+Next, we first hav to create a profile page but before that we need to create a new profile api endpoint.
+
+In pages/api/profile/[id].ts:
+
+```
+import type { NextApiRequest, NextApiResponse } from "next";
+
+import {
+  singleUserQuery,
+  userCreatedPostsQuery,
+  userLikedPostsQuery,
+} from "./../../../utils/queries";
+import { sanityClient } from "../../../lib/sanity";
+
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
+  if (req.method === "GET") {
+    // /api/profile/:id call request
+    const { id } = req.query;
+
+    const query = singleUserQuery(id);
+    const userVideosQuery = userCreatedPostsQuery(id);
+    const userLikedVideosQuery = userLikedPostsQuery(id);
+
+    const user = await sanityClient.fetch(query);
+    const userVideos = await sanityClient.fetch(userVideosQuery);
+    const userLikedVideos = await sanityClient.fetch(userLikedVideosQuery);
+
+    const data = { user: user[0], userVideos, userLikedVideos };
+
+    res.status(200).json(data);
+  }
+}
+
+
+```
+
+In pages/profile/[id].tsx:
+
+```
+import React, { useEffect, useState } from "react";
+import Image from "next/image";
+import { GoVerified } from "react-icons/go";
+import axios from "axios";
+
+import VideoCard from "../../components/VideoCard";
+import NoResults from "../../components/NoResults";
+import { IUser, Video } from "../../typings";
+import { BASE_URL } from "../../utils";
+
+interface IProps {
+  data: {
+    user: IUser;
+    userVideos: Video[];
+    userLikedVideos: Video[];
+  };
+}
+
+const Profile = ({ data }: IProps) => {
+  const [showUserVideos, setShowUserVideos] = useState<Boolean>(true);
+  const [videosList, setVideosList] = useState<Video[]>([]);
+
+  const { user, userVideos, userLikedVideos } = data;
+  const videos = showUserVideos ? "border-b-2 border-black" : "text-gray-400";
+  const liked = !showUserVideos ? "border-b-2 border-black" : "text-gray-400";
+
+  useEffect(() => {
+    const fetchVideos = async () => {
+      if (showUserVideos) {
+        setVideosList(userVideos);
+      } else {
+        setVideosList(userLikedVideos);
+      }
+    };
+
+    fetchVideos();
+  }, [showUserVideos, userLikedVideos, userVideos]);
+
+  return (
+    <div className="w-full">
+      <div className="flex gap-6 md:gap-10 mb-4 bg-white w-full">
+        <div className="w-16 h-16 md:w-32 md:h-32">
+          <Image
+            width={120}
+            height={120}
+            layout="responsive"
+            className="rounded-full"
+            src={user.image}
+            alt="user-profile"
+          />
+        </div>
+
+        <div>
+          <div className="text-md md:text-2xl font-bold tracking-wider flex gap-2 items-center justify-center lowercase">
+            <span>{user.userName.replace(/\s+/g, "")} </span>
+            <GoVerified className="text-blue-400 md:text-xl text-md" />
+          </div>
+          <p className="text-sm font-medium"> {user.userName}</p>
+        </div>
+      </div>
+      <div>
+        <div className="flex gap-10 mb-10 mt-10 border-b-2 border-gray-200 bg-white w-full">
+          <p
+            className={`text-xl font-semibold cursor-pointer ${videos} mt-2`}
+            onClick={() => setShowUserVideos(true)}
+          >
+            Videos
+          </p>
+          <p
+            className={`text-xl font-semibold cursor-pointer ${liked} mt-2`}
+            onClick={() => setShowUserVideos(false)}
+          >
+            Liked
+          </p>
+        </div>
+        <div className="flex gap-6 flex-wrap md:justify-start">
+          {videosList.length > 0 ? (
+            videosList.map((post: Video, idx: number) => (
+              <VideoCard key={idx} post={post} />
+            ))
+          ) : (
+            <NoResults
+              text={`No ${showUserVideos ? "" : "Liked"} Videos Yet`}
+            />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export const getServerSideProps = async ({
+  params: { id },
+}: {
+  params: { id: string };
+}) => {
+  const res = await axios.get(`${BASE_URL}/api/profile/${id}`);
+
   return {
-    props: {},
+    props: { data: res.data },
+  };
+};
+export default Profile;
+
+```
+
+Update the VideoCard.tsx component profile Links:
+
+```
+  <div className="flex gap-3 p-2 cursor-pointer font-semibold rounded">
+          <div className="md:w-16 md:h-16 w-10 h-10">
+            {/* We cannot add an Image as a child component of a Link directly so add between <> </> */}
+            <Link href={`/profile/${post.postedBy._id}`}>
+              <>
+                <Image
+                  width={62}
+                  height={62}
+                  className="rounded-full"
+                  src={post.postedBy.image}
+                  alt="profile photo"
+                  layout="responsive"
+                  objectFit="cover"
+                />
+              </>
+            </Link>
+          </div>
+          <div>
+          <Link href={`/profile/${post.postedBy._id}`}>
+              <div className="flex items-center gap-2">
+                <p className="flex gap-2 items-center md:text-md font-bold text-primary">
+                  {post.postedBy.userName}{" "}
+                  <GoVerified className="text-blue-400 text-md" />
+                </p>
+                <p className="capitalize text-xs text-gray-500 hidden md:block">
+                  {post.postedBy.userName}
+                </p>
+              </div>
+            </Link>
+          </div>
+        </div>
+```
+
+Finally we need to create the search component but before that we need to create a search page to display the results and a backend api endpoint for the search page:
+
+In pages/api/search/[searchTerm].ts:
+
+```
+import type { NextApiRequest, NextApiResponse } from "next";
+
+import { searchPostsQuery } from "../../../utils/queries";
+import { sanityClient } from "../../../lib/sanity";
+
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
+  if (req.method === "GET") {
+    const { searchTerm } = req.query;
+
+    const videosQuery = searchPostsQuery(searchTerm);
+
+    const videos = await sanityClient.fetch(videosQuery);
+
+    res.status(200).json(videos);
+  }
+}
+
+```
+
+In pages/search/[searchTerm].tsx:
+
+```
+import React, { useState } from "react";
+import Image from "next/image";
+import { useRouter } from "next/router";
+import { GoVerified } from "react-icons/go";
+import Link from "next/link";
+import axios from "axios";
+
+import NoResults from "../../components/NoResults";
+import VideoCard from "../../components/VideoCard";
+import useAuthStore from "../../store/authStore";
+import { BASE_URL } from "../../utils";
+import { IUser, Video } from "../../typings";
+
+const Search = ({ videos }: { videos: Video[] }) => {
+  const [isAccounts, setIsAccounts] = useState(false);
+  const { allUsers }: { allUsers: IUser[] } = useAuthStore();
+
+  const router = useRouter();
+  const { searchTerm }: any = router.query;
+
+  const accounts = isAccounts ? "border-b-2 border-black" : "text-gray-400";
+  const isVideos = !isAccounts ? "border-b-2 border-black" : "text-gray-400";
+  const searchedAccounts = allUsers?.filter((user: IUser) =>
+    user.userName.toLowerCase().includes(searchTerm)
+  );
+
+  return (
+    <div className="w-full  ">
+      <div className="flex gap-10 mb-10 border-b-2 border-gray-200 md:fixed z-50 bg-white w-full">
+        <p
+          onClick={() => setIsAccounts(true)}
+          className={`text-xl  font-semibold cursor-pointer ${accounts} mt-2`}
+        >
+          Accounts
+        </p>
+        <p
+          className={`text-xl font-semibold cursor-pointer ${isVideos} mt-2`}
+          onClick={() => setIsAccounts(false)}
+        >
+          Videos
+        </p>
+      </div>
+      {isAccounts ? (
+        <div className="md:mt-16">
+          {searchedAccounts.length > 0 ? (
+            searchedAccounts.map((user: IUser, idx: number) => (
+              <Link key={idx} href={`/profile/${user._id}`}>
+                <div className=" flex gap-3 p-2 cursor-pointer font-semibold rounded border-b-2 border-gray-200">
+                  <div>
+                    <Image
+                      width={50}
+                      height={50}
+                      className="rounded-full"
+                      alt="user-profile"
+                      src={user.image}
+                    />
+                  </div>
+                  <div>
+                    <div>
+                      <p className="flex gap-1 items-center text-lg font-bold text-primary">
+                        {user.userName} <GoVerified className="text-blue-400" />
+                      </p>
+                      <p className="capitalize text-gray-400 text-sm">
+                        {user.userName}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            ))
+          ) : (
+            <NoResults text={`No Account Results for ${searchTerm}`} />
+          )}
+        </div>
+      ) : (
+        <div className="md:mt-16 flex flex-wrap gap-6 md:justify-start ">
+          {videos.length ? (
+            videos.map((post: Video, idx: number) => (
+              <VideoCard post={post} key={idx} />
+            ))
+          ) : (
+            <NoResults text={`No Video Results for ${searchTerm}`} />
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export const getServerSideProps = async ({
+  params: { searchTerm },
+}: {
+  params: { searchTerm: string };
+}) => {
+  const res = await axios.get(`${BASE_URL}/api/search/${searchTerm}`);
+
+  return {
+    props: { videos: res.data },
   };
 };
 
+export default Search;
 
 ```
 
-In pages/api create a new folder post/index.ts. Copy the api/hello.ts boilerplate code in post/index.ts.
+In component/SearchInput.tsx:
 
 ```
-// Next.js API route support: https://nextjs.org/docs/api-routes/introduction
-import type { NextApiRequest, NextApiResponse } from "next";
+import { useRouter } from "next/router";
+import React, { useState } from "react";
+import { BiSearch } from "react-icons/bi";
 
-type Data = {
-  name: string;
+function Search() {
+  const router = useRouter();
+  const [searchValue, setSearchValue] = useState("");
+  const handleSearch = (e: { preventDefault: () => void }) => {
+    e.preventDefault();
+
+    if (searchValue) {
+      router.push(`/search/${searchValue}`);
+    }
+  };
+  return (
+    <div className="relative hidden md:block">
+      <form
+        onSubmit={handleSearch}
+        className="absolute md:static top-10 -left-20 bg-white flex items-center justify-center"
+      >
+        <input
+          value={searchValue}
+          onChange={(e) => setSearchValue(e.target.value)}
+          className="bg-primary p-3 text-sm font-medium border-[1px] border-gray-100 focus:outline-none focus:border-[1px] focus:border-gray-400 w-[300px] md:w-[350px] rounded-full  md:top-0 placeholder:font-light placeholder:text-sm"
+          placeholder="Search accounts and videos"
+        />
+        <button
+          onClick={handleSearch}
+          className="absolute md:right-3 right-4 border-l-2 border-gray-300 pl-3 text-2xl text-gray-400"
+        >
+          <BiSearch />
+        </button>
+      </form>
+    </div>
+  );
+}
+export default SearchInput;
+
+```
+
+Filtering based on topic filters in the sidebar:
+
+In pages/index.tsx:
+In the getServerSideProps method, you can filter by topic using query parameters.
+We update the getServerSideProps method from this:
+
+```
+export const getServerSideProps = async () => {
+  // const res = await axios.get(`http://localhost:3000/api/post`);
+  // console.log(res.data.name);
+
+  // fetch new videos each time we load the page
+  const { data } = await axios.get(`${BASE_URL}/api/post`);
+  console.log(data);
+  return {
+    props: {
+      videos: data,
+    },
+  };
+};
+```
+
+To this:
+
+```
+
+export const getServerSideProps = async ({
+ query: { topic },
+}: {
+ query: { topic: string };
+}) => {
+ let res = null;
+ if (topic) {
+   res = await axios.get(`${BASE_URL}/api/discover/${topic}`);
+ } else {
+   res = await axios.get(`${BASE_URL}/api/post`);
+ }
+ // fetch new videos each time we load the page
+
+ return {
+   props: {
+     videos: res.data,
+   },
+ };
 };
 
-export default function handler(
-  req: NextApiRequest,
-  res: NextApiResponse<Data>
-) {
-  res.status(200).json({ name: "Response Success" });
-}
+```
 
+Next we need to create the new endpoint for discover:
+In pages/api/discover/[topic].ts:
+
+```
+import type { NextApiRequest, NextApiResponse } from "next";
+
+import { topicPostsQuery } from "./../../../utils/queries";
+import { sanityClient } from "../../../lib/sanity";
+
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
+  if (req.method === "GET") {
+    const { topic } = req.query;
+
+    const videosQuery = topicPostsQuery(topic);
+
+    const videos = await sanityClient.fetch(videosQuery);
+
+    res.status(200).json(videos);
+  }
+}
 
 ```

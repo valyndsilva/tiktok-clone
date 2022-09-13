@@ -30,7 +30,7 @@ const Detail = ({ postDetails }: IProps) => {
 
   const { userProfile }: any = useAuthStore();
 
-  const onVideoClick = () => {
+  const handleVideoClick = () => {
     if (isPlaying) {
       videoRef?.current?.pause();
       setIsPlaying(false);
@@ -61,7 +61,7 @@ const Detail = ({ postDetails }: IProps) => {
     e.preventDefault();
 
     if (userProfile) {
-      if (comment) {
+    if (comment) {  
         setIsPostingComment(true);
         const res = await axios.put(`${BASE_URL}/api/post/${post._id}`, {
           userId: userProfile._id,
@@ -89,7 +89,7 @@ const Detail = ({ postDetails }: IProps) => {
               <div className="lg:h-[100vh] h-[60vh]">
                 <video
                   ref={videoRef}
-                  onClick={onVideoClick}
+                  onClick={handleVideoClick}
                   loop
                   src={post?.video?.asset.url}
                   className=" h-full cursor-pointer"
@@ -98,7 +98,7 @@ const Detail = ({ postDetails }: IProps) => {
 
               <div className="absolute top-[45%] left-[40%]  cursor-pointer">
                 {!isPlaying && (
-                  <button onClick={onVideoClick}>
+                  <button onClick={handleVideoClick}>
                     <BsFillPlayFill className="text-white text-6xl lg:text-8xl" />
                   </button>
                 )}
@@ -116,6 +116,7 @@ const Detail = ({ postDetails }: IProps) => {
               )}
             </div>
           </div>
+          {/* Right Side */}
           <div className="relative w-[1000px] md:w-[900px] lg:w-[700px]">
             <div className="lg:mt-20 mt-10">
               <Link href={`/profile/${post.postedBy._id}`}>

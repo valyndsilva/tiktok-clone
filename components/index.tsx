@@ -9,3 +9,5 @@ export { default as VideoCard } from "./VideoCard";
 export { default as NoResults } from "./NoResults";
 export { default as Comments } from "./Comments";
 export { default as LikeButton } from "./LikeButton";
+export { default as SearchInput } from "./SearchInput";
+export { default as ProfileInfo } from "./ProfileInfo";

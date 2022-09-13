@@ -1,19 +1,32 @@
 import { NextPage } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { HiHome } from "react-icons/hi";
 import { MdOutlineVideoCameraBack } from "react-icons/md";
+import { AiOutlineLogout } from "react-icons/ai";
+import { IoMdAdd } from "react-icons/io";
+
 import { BsPeople } from "react-icons/bs";
 import Discover from "./Discover";
 import Footer from "./Footer";
 import SuggestedAccounts from "./SuggestedAccounts";
 import useAuthStore from "../store/authStore";
-import { GoogleLogin } from "react-google-login";
+import { GoogleLogin, googleLogout } from "@react-oauth/google";
+import { createOrGetUser } from "../utils";
+import Image from "next/image";
+import { IUser } from "../typings";
+import ProfileInfo from "./ProfileInfo";
 
 function Sidebar() {
-  const [showSidebar, setShowSidebar] = useState<Boolean>(true);
-  const userProfile = false;
+  // const user= false;
+  const [user, setUser] = useState<IUser | null>();
+  const { userProfile, addUser, removeUser } = useAuthStore();
+  console.log(userProfile);
+  useEffect(() => {
+    setUser(userProfile);
+  }, [userProfile]);
+
   const { pathname } = useRouter();
   const { fetchAllUsers, allUsers }: any = useAuthStore();
 
@@ -51,32 +64,6 @@ function Sidebar() {
             </div>
           </Link>
         </div>
-        {!userProfile && (
-          <div className="hidden xl:inline-flex xl:flex-col pb-10 border-b-[1px] border-b-gray-200">
-            <p className="text-sm font-light text-gray-400 my-5">
-              Log in to follow creators, like videos, and view comments.
-            </p>
-            {/* <button className="border border-tiktok  py-3 w-full rounded-lg text-tiktok hover:bg-[#FEF4F6]">
-              Log in
-            </button> */}
-            {/* https://github.com/anthonyjgrove/react-google-login */}
-            <GoogleLogin
-              clientId=""
-              render={(renderProps) => (
-                <button
-                  className="border border-tiktok py-3 w-full rounded-lg text-tiktok hover:bg-[#FEF4F6]"
-                  onClick={renderProps.onClick}
-                  disabled={renderProps.disabled}
-                >
-                  Log in
-                </button>
-              )}
-              onSuccess={() => {}}
-              onFailure={() => {}}
-              cookiePolicy="single_host_origin"
-            />
-          </div>
-        )}
         <Discover />
         <SuggestedAccounts fetchAllUsers={fetchAllUsers} allUsers={allUsers} />
         <Footer />
