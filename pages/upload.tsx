@@ -72,8 +72,7 @@ const Upload = () => {
         topic,
       };
 
-      // await axios.post(`${BASE_URL}/api/post`, doc);
-      await axios.post(`/api/post`, doc);
+      await axios.post(`${BASE_URL}/api/post`, doc);
 
       router.push("/");
     }
