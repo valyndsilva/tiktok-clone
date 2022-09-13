@@ -2,9 +2,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "start": "sanity start", 
-    "test": "sanity check", 
-    "build": "sanity build public -y" 
+    "build": "next build",
+    "start": "next start"
   },
   "dependencies": {
     "@react-oauth/google": "^0.2.6",
