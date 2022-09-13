@@ -1,6 +1,6 @@
 import { groq } from "next-sanity";
 export const allPostsQuery = () => {
-  const query = groq`*[_type == "post"] | order(_createdAt desc){
+  const query = `*[_type == "post"] | order(_createdAt desc){
       _id,
        caption,
          video{
@@ -31,7 +31,7 @@ export const allPostsQuery = () => {
 };
 
 export const postDetailQuery = (postId: string | string[] | undefined) => {
-  const query = groq`*[_type == "post" && _id == '${postId}']{
+  const query = `*[_type == "post" && _id == '${postId}']{
       _id,
        caption,
          video{
@@ -60,7 +60,7 @@ export const postDetailQuery = (postId: string | string[] | undefined) => {
 };
 
 export const searchPostsQuery = (searchTerm: string | string[] | undefined) => {
-  const query = groq`*[_type == "post" && caption match '${searchTerm}*' || topic match '${searchTerm}*'] {
+  const query = `*[_type == "post" && caption match '${searchTerm}*' || topic match '${searchTerm}*'] {
       _id,
        caption,
          video{
@@ -90,13 +90,13 @@ export const searchPostsQuery = (searchTerm: string | string[] | undefined) => {
 };
 
 export const singleUserQuery = (userId: string | string[] | undefined) => {
-  const query = groq`*[_type == "user" && _id == '${userId}']`;
+  const query = `*[_type == "user" && _id == '${userId}']`;
 
   return query;
 };
 
 export const allUsersQuery = () => {
-  const query = groq`*[_type == "user"]`;
+  const query = `*[_type == "user"]`;
 
   return query;
 };
@@ -104,7 +104,7 @@ export const allUsersQuery = () => {
 export const userCreatedPostsQuery = (
   userId: string | string[] | undefined
 ) => {
-  const query = groq`*[ _type == 'post' && userId == '${userId}'] | order(_createdAt desc){
+  const query = `*[ _type == 'post' && userId == '${userId}'] | order(_createdAt desc){
       _id,
        caption,
          video{
@@ -136,7 +136,7 @@ export const userCreatedPostsQuery = (
 };
 
 export const userLikedPostsQuery = (userId: string | string[] | undefined) => {
-  const query = groq`*[_type == 'post' && '${userId}' in likes[]._ref ] | order(_createdAt desc) {
+  const query = `*[_type == 'post' && '${userId}' in likes[]._ref ] | order(_createdAt desc) {
       _id,
        caption,
          video{
@@ -168,7 +168,7 @@ export const userLikedPostsQuery = (userId: string | string[] | undefined) => {
 };
 
 export const topicPostsQuery = (topic: string | string[] | undefined) => {
-  const query = groq`*[_type == "post" && topic match '${topic}*'] {
+  const query = `*[_type == "post" && topic match '${topic}*'] {
       _id,
        caption,
          video{
