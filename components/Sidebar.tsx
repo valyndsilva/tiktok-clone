@@ -21,8 +21,8 @@ import ProfileInfo from "./ProfileInfo";
 function Sidebar() {
   // const user= false;
   const [user, setUser] = useState<IUser | null>();
-  const { userProfile, addUser, removeUser } = useAuthStore();
-  console.log(userProfile);
+  const { userProfile } = useAuthStore();
+  // console.log(userProfile);
   useEffect(() => {
     setUser(userProfile);
   }, [userProfile]);

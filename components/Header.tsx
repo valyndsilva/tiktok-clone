@@ -15,7 +15,7 @@ function Header() {
   // const user= false;
   const [user, setUser] = useState<IUser | null>();
   const { userProfile, addUser, removeUser } = useAuthStore();
-  console.log(userProfile);
+  // console.log(userProfile);
   useEffect(() => {
     setUser(userProfile);
   }, [userProfile]);
